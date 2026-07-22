@@ -1,5 +1,16 @@
 # Phase 0 — Skeleton
 
+**Commits:** `13f27aa`
+
+## Files worth showing in the post
+
+| File | Why |
+|---|---|
+| `fastapi-backend/README.md` | The "must never know MCP exists" constraint, in four sentences |
+| `docker-compose.yml` | The `pg_isready` healthcheck, and why bare `depends_on` isn't enough |
+| `.env.example` | Config as documentation — including the duplication gotcha below |
+| `docs/decisions/0001-*.md` | The decision the whole series rests on |
+
 ## What we built
 
 The repo shell: four empty service folders each with a README stating its single

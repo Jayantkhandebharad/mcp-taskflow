@@ -732,6 +732,72 @@ Carried forward from project #1 because they worked:
 Posts map 1:1 to the 📝 phases in §11 — eleven posts, four of them flagship
 (first MCP server, RBAC, building the client, swapping the brain).
 
+### How code gets from this repo into a post
+
+The portfolio site renders posts as TSX and pulls code **live from GitHub**. The
+loop is:
+
+```
+  build a phase here  →  commit  →  note the SHA  →  write the post over there
+                                          │
+                                          └── posts pin to that SHA, forever
+```
+
+1. **Register the series once** in `portfolio/src/content/blog.ts`:
+
+   ```ts
+   {
+     slug: 'mcp-fullstack',
+     title: 'MCP, From Scratch',
+     category: 'MCP · Series',
+     repoUrl: 'https://github.com/Jayantkhandebharad/mcp-taskflow',  // ← this repo
+     posts: [ /* one entry per post */ ],
+   }
+   ```
+
+   `repoUrl` is what makes code references resolve. It's set on the *series*, not
+   per post.
+
+2. **Write the post body** as `portfolio/src/content/blog/mcp-fullstack/<slug>.tsx`,
+   and register it in the `posts` array with its metadata (summary, weight,
+   readingTime, date, phase, lessonType, language, prerequisites).
+
+3. **Reference real files by path, pinned to a commit:**
+
+   ```tsx
+   <RepoFile path="mcp-server/app/gating.py" branch="a1b2c3d" />
+   ```
+
+   That renders an inline chip. Clicking it opens the file **live from GitHub** in
+   a side panel, at that exact commit.
+
+### The constraint this puts on us
+
+> **A published post is a permanent link into this repo's history.** Pin every
+> `RepoFile` to the commit SHA the post was written against — never to `main`.
+
+If a post pins to `main` and we later rename `gating.py` or move a folder, the
+post silently starts 404-ing in the code panel. Pinning to a SHA makes the
+reference immutable: the reader sees exactly the code the post is describing, even
+after we refactor it three phases later.
+
+Series #1 already does this (`<RepoFile path="CLAUDE.md" branch="7188235" />`) and
+says so in its description — "pinned to real commits". We keep the habit.
+
+**Therefore:** every brief in `docs/briefs/` records the commit SHA (or range) for
+its phase. That field is not bookkeeping — it is the thing the post author needs
+and cannot recover later without archaeology.
+
+### What this means for how we commit
+
+Because posts pin to commits, the git history is *published surface*, not just
+process:
+
+- One logical change per commit, so a post can point at a commit that does exactly
+  one thing.
+- Commit messages get written for a reader, not for us.
+- Don't force-push or rewrite `main` after a post ships pinned to it.
+
 ---
 
 ## 14. Status

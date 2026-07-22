@@ -12,8 +12,14 @@ useful than what actually happened.
 ```markdown
 # Phase N — <name>
 
+**Commits:** `<sha>` (or `<first>..<last>` for a range)
+
 ## What we built
 Two or three sentences.
+
+## Files worth showing in the post
+The three or four files a reader should actually look at, with a one-line note
+on why each one matters.
 
 ## Decisions made along the way
 Anything we had to choose between, and why we chose it. Link to an ADR if it
@@ -34,6 +40,23 @@ Things that worked differently than expected, even if nothing broke.
 The one idea a reader should walk away with. If you can't name it, the phase
 probably isn't a post.
 ```
+
+## Why the commit SHA is at the top
+
+Posts in the portfolio reference this repo's files **pinned to a commit**:
+
+```tsx
+<RepoFile path="mcp-server/app/gating.py" branch="a1b2c3d" />
+```
+
+Clicking that chip opens the file live from GitHub *at that commit*, so the reader
+sees exactly the code the post describes — even after we refactor it two phases
+later. Pinning to `main` instead would mean every rename silently breaks a
+published post.
+
+The SHA is therefore the one piece of information the post author needs and can't
+reconstruct later without digging through history. Write it down while you're
+here. See `PLAN.md` §13.
 
 ## Why "what went wrong" is the point
 
