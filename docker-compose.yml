@@ -1,0 +1,50 @@
+name: taskflow
+
+# One command boots the whole world:  docker compose up
+#
+# Services are added here as each phase lands. Right now only the database
+# exists — see the Status section in README.md.
+#
+# Everything is configured from `.env` (copy it from `.env.example` first).
+# Inside this network, services reach each other by service name — the backend
+# will connect to `db:5432`, not `localhost:5432`.
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: taskflow-db
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
+    ports:
+      # host:container — published so you can connect with psql or a GUI while
+      # developing. Change POSTGRES_PORT in .env if 5432 is already in use.
+      - "${POSTGRES_PORT:-5432}:5432"
+
+    volumes:
+      # A named volume, so data survives `docker compose down`.
+      # To wipe it and start clean:  docker compose down -v
+      - db_data:/var/lib/postgresql/data
+
+    healthcheck:
+      # Other services will wait on this with `depends_on: condition:
+      # service_healthy`. Postgres accepts connections a moment before it is
+      # actually ready, so "the container started" is not good enough.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # Coming in later phases:
+  #   fastapi-backend  (phase 1)   the API and the only thing that touches db
+  #   mcp-server       (phase 6)   MCP tools over Streamable HTTP
+  #   chat-client      (phase 9)   the LangGraph agent
+  #   frontend         (phase 4)   the React app
+
+volumes:
+  db_data:
