@@ -1,8 +1,66 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # Working agreement
 
 **Read [`PLAN.md`](PLAN.md) first.** It is the source of truth for this repo: the
 app, the data model, the auth path, the tool design, and the build order. This
-file is only about *how we work*.
+file is about *how we work*; the two sections below are practical orientation for
+a fresh session.
+
+## Orientation
+
+- **[`PLAN.md`](PLAN.md)** — the whole design in one file: the app, the five-table
+  data model, the end-to-end auth path, all 12 MCP tools, and the 14-phase build
+  order (§11). Read it before touching code.
+- **[`docs/decisions/`](docs/decisions/)** — three ADRs for the load-bearing
+  choices: the MCP server calls the API not the DB (0001), we issue our own JWT
+  (0002), the LLM is swappable (0003). Revisiting one of these means a new ADR, not
+  a silent code change.
+- **[`docs/briefs/`](docs/briefs/)** — one `phase-N.md` per phase, written the day
+  the work happens (symptom → root cause → fix → what the docs didn't tell us).
+  Each brief records the commit SHA(s) its blog post pins to (PLAN.md §13), so that
+  SHA line is load-bearing, not bookkeeping.
+- **Current state:** phase 0 (skeleton) is done — only PostgreSQL runs. The four
+  service folders (`fastapi-backend`, `mcp-server`, `chat-client`, `frontend`) each
+  hold a README stating their one job and no code yet. [`README.md`](README.md)
+  §Status tracks the phase checklist; keep it and PLAN.md §14 in sync as phases land.
+
+## Commands
+
+The repo is built one phase at a time, so most tooling arrives with the phase that
+needs it. Do not invent commands that a phase hasn't created yet. What runs today:
+
+```bash
+cp .env.example .env          # first run only; .env is gitignored
+docker compose up             # phase 0: starts Postgres, nothing else
+docker compose up db          # just the database
+docker compose ps             # what's running
+docker compose exec db psql -U taskflow -d taskflow -c '\dt'   # list tables
+docker compose down           # stop; add -v to wipe the db volume for a clean slate
+```
+
+The two rules under *"Two rules that are checked"* below have **no CI yet** —
+verify them by hand until the CI phase lands:
+
+```bash
+# 1. No provider SDK imported outside chat-client/app/llm.py (must print nothing):
+grep -rn --include='*.py' -E '(import|from) (anthropic|openai)' . | grep -v 'chat-client/app/llm.py'
+# 2. The MCP server never imports a database driver (must print nothing):
+grep -rniE 'psycopg|sqlalchemy|asyncpg' mcp-server/
+```
+
+Conventions for the tooling that lands in later phases (§2 of PLAN.md locks these):
+
+- **Python services** are packaged with **`uv`**, one lockfile each. Tests are
+  **pytest**, run from the service folder: `uv run pytest`, and a single test with
+  `uv run pytest tests/test_x.py::test_name`.
+- **Migrations** are Alembic in `fastapi-backend`: `alembic upgrade head`, then
+  `python scripts/seed.py` (rerunnable) for deterministic demo data.
+- **Frontend** is Vite + TypeScript: `npm run dev` / `npm run build` (phase 4+).
+- **The MCP server has a second entry point** — `python -m app.server --stdio` —
+  for pointing Claude Desktop / Claude Code at it locally (phase 5+).
 
 ## The audience is a trainee engineer
 
