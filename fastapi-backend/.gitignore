@@ -1,0 +1,8 @@
+# uv writes the resolved lockfile here — do commit uv.lock (reproducible
+# installs), but don't commit the virtual env it builds around it.
+.venv/
+
+# Byte-code and pytest cache
+__pycache__/
+*.pyc
+.pytest_cache/

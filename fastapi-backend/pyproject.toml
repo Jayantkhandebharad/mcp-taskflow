@@ -1,0 +1,69 @@
+# Package metadata + dependencies for the fastapi-backend service.
+#
+# We use `uv` (see PLAN.md §2) — one lockfile per Python service. To install
+# everything from this file into a local venv:
+#
+#     cd fastapi-backend
+#     uv sync                    # installs runtime + dev deps into .venv/
+#     uv run alembic upgrade head
+#
+# Only put runtime deps under [project.dependencies]. Test-only deps go under
+# [dependency-groups] so a slim production install skips them.
+
+[project]
+name = "taskflow-backend"
+version = "0.1.0"
+description = "TaskFlow backend — owns the data and enforces the rules"
+requires-python = ">=3.12"
+
+dependencies = [
+    # SQLAlchemy 2.0 style — the whole codebase uses the new typed ORM. Pinning
+    # to a minor version so a background 2.1 release doesn't silently change how
+    # `Mapped[...]` behaves for readers a year from now.
+    "sqlalchemy>=2.0,<2.1",
+
+    # Migrations. Alembic pulls SQLAlchemy in transitively; we still list it
+    # because we import it directly in alembic/env.py.
+    "alembic>=1.13,<2",
+
+    # The Postgres driver. `psycopg[binary]` bundles the C driver as a wheel so
+    # `uv sync` doesn't need libpq / a C compiler on the host. In phase-12 (the
+    # container) we can drop the [binary] extra and rebuild from source, but at
+    # this stage the developer machine matters more.
+    "psycopg[binary]>=3.2,<4",
+
+    # Pydantic v2 for validation. pydantic-settings is the v2 way to read
+    # config from environment variables — used in app/config.py.
+    "pydantic>=2.7,<3",
+    "pydantic-settings>=2.3,<3",
+
+    # Password hashing. bcrypt is the algorithm; passlib is the wrapper that
+    # gives us a stable interface even if we later add argon2 alongside it.
+    # The seed script uses this in phase 1 so demo users have real hashes;
+    # phase 2 uses it for /auth/login.
+    #
+    # Why the extra pin on bcrypt: passlib 1.7.4 is unmaintained, and on load it
+    # probes its bcrypt backend by verifying a >72-byte string. bcrypt 4.1+ warns
+    # about the missing `__about__` attribute; bcrypt 5.0 raises outright
+    # ("password cannot be longer than 72 bytes"), and passlib fails to import.
+    # Pinning to <4.1 keeps the probe quiet until phase 2 or later, when we can
+    # migrate off passlib (pwdlib / bcrypt directly) if we want.
+    "passlib>=1.7.4,<2",
+    "bcrypt>=4.0,<4.1",
+]
+
+[dependency-groups]
+# `uv sync` installs the `dev` group by default. Test-only tools live here so
+# they don't ship into a production image.
+dev = [
+    "pytest>=8.0,<9",
+]
+
+# Where our code actually is. Without this, `uv sync` doesn't know what to
+# install as an editable package.
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
