@@ -1,0 +1,220 @@
+# Phase 1 — Schema + migrations + seed
+
+**Commits (oldest → newest):**
+
+- `19afbad` — `fastapi-backend` package skeleton + uv-managed deps
+- `4ebbc3f` — assemble `DATABASE_URL` from parts, not from a duplicated env line
+- `003cce0` — the five tables as SQLAlchemy 2.0 models
+- `5eed275` — Alembic wired to `app.config`, initial migration hand-written
+- `ef5024b` — deterministic, rerunnable seed
+- `3403947` — pytest for the invariants and the seed
+
+The blog post for this phase should pin each `<RepoFile>` to the commit
+where that file lands. In particular, the composite-FK section lives in
+`003cce0` (`app/models/task.py`) and `5eed275` (the migration).
+
+## Files worth showing in the post
+
+| File | Why |
+|---|---|
+| `fastapi-backend/app/models/task.py` | The composite-FK docstring — the phase in one file |
+| `fastapi-backend/alembic/versions/2026_07_23_0001_initial.py` | Same rule, one layer down, in DDL |
+| `fastapi-backend/app/config.py` | Assembling the DB URL from parts — the phase-0 duplication finally goes away |
+| `fastapi-backend/scripts/seed.py` | Wipe-then-insert with deterministic UUIDs — the shape a seed script should have |
+| `fastapi-backend/tests/test_invariants.py` | Each test is a defence against a real bug this phase's schema is designed to prevent |
+
+## What we built
+
+The whole data layer of the backend, and nothing else. No FastAPI app, no
+routers, no auth — those land in phases 2 and 3. What exists now:
+
+- `fastapi-backend/pyproject.toml` — deps via `uv`.
+- `app/config.py` and `app/db.py` — one `Settings` class, one engine, one
+  `SessionLocal` factory, one `get_db` generator.
+- `app/models/*` — the five tables from PLAN.md §5 as SQLAlchemy 2.0
+  models, sharing a `Base` whose `MetaData` carries the Alembic naming
+  convention.
+- `alembic/` — a working migrations setup and a hand-written `0001_initial`.
+- `scripts/seed.py` — three users, two projects, fifteen tasks, four
+  comments, deterministic and idempotent.
+- `tests/` — six pytest tests covering the invariants the schema is meant
+  to enforce.
+
+`docker compose up db && cd fastapi-backend && uv run alembic upgrade head
+&& uv run python -m scripts.seed` is now the whole path from an empty
+machine to a queryable database with realistic data.
+
+## Decisions made along the way
+
+**Assemble `DATABASE_URL` in code, drop the env line.** Phase-0's brief
+called the two-place password duplication ugly and left the fix as a phase-1
+decision. `app/config.py` now composes `postgresql+psycopg://user:pw@host:port/db`
+from `POSTGRES_HOST/PORT/USER/PASSWORD/DB`. One source of truth for the
+password, and no more Compose-doesn't-interpolate-inside-.env surprise.
+Cost: `POSTGRES_HOST` is now a new env var (default `localhost`), and it
+will flip to `db` in phase 2 when the backend runs inside Compose.
+
+**Migrations and seed run from the developer's machine against the
+published port.** No `backend` container yet. `POSTGRES_HOST=localhost` is
+what makes that possible without touching Compose. Phase 2 introduces the
+container and decides which host is used from where; keeping that decision
+for phase 2 is deliberate — one thing at a time.
+
+**Enforce invariants in the DATABASE, not just the code.** Three invariants
+listed in PLAN.md §5 are physical properties of the schema now:
+
+1. `(project_id, number)` is unique on `tasks` — the "WEB-14" reference is a
+   promise the database keeps.
+2. `ON DELETE CASCADE` on `comments.task_id` — deleting a task removes its
+   comments, in the storage layer, no ORM cascade needed.
+3. `(project_id, assignee_id) → project_members(project_id, user_id)` on
+   `tasks` — a composite foreign key, discussed at length below.
+
+**UUIDs generated in Python, not in the database.** `default=uuid4` on
+every PK. Two reasons stated in `app/models/user.py`: the id is available
+before the INSERT (nicer error paths), and any tool — tests, seed,
+migrations — can construct a UUID without a round-trip.
+
+**Email lowercase-enforced twice.** An ORM `@validates` hook on `User.email`
+fixes normal writes; a `CHECK (email = lower(email))` constraint on the
+table rejects anything the ORM missed. Same pattern on `Project.key` for
+uppercase. The "code lies but the schema doesn't" instinct.
+
+**A naming convention on the shared `MetaData`.** Without it, constraint
+names drift across machines and Alembic autogen produces meaningless
+`ck_1`/`fk_2`/`ix_ab12cd`. Naming it once at the `Base` level is the
+standard Alembic advice; doing it in phase 1 costs one dict and pays back
+for every future migration.
+
+**Hand-write `0001_initial`.** Autogen would produce equivalent DDL as an
+undifferentiated wall of `op.create_*` calls. Hand-writing means the
+migration itself can carry the same comments the model files do — future
+readers see the composite FK explained *at the point the DDL happens*, not
+only in a Python source file three folders away. Future migrations get to
+be autogenerated.
+
+**Seed idempotency = wipe-then-insert in one transaction + deterministic
+UUIDs.** No "if empty then seed" branch, no upsert conflict paths. Every
+row's primary key is `uuid5(NAMESPACE, "alice@example.com")`-style, so two
+runs produce byte-identical data. Test `test_seed_is_idempotent` proves
+both the row counts and the primary keys match across runs.
+
+## The one design point this phase exists for: the composite FK
+
+The invariant is "a task's assignee must be a member of the task's
+project." The naive schema puts a plain foreign key `assignee_id →
+users.id`, which asserts nothing about *this* project's membership. That
+leaves the real invariant living in application code — one check on every
+task-write path, and one drift away from bad data.
+
+`tasks.__table_args__` now carries:
+
+```python
+sa.ForeignKeyConstraint(
+    ["project_id", "assignee_id"],
+    ["project_members.project_id", "project_members.user_id"],
+    name="fk_tasks_assignee_is_project_member",
+)
+```
+
+That constraint has three properties worth naming:
+
+- **It expresses the rule at the storage layer.** The database refuses to
+  insert or update a task whose `(project_id, assignee_id)` pair isn't in
+  `project_members`. No app-code check required, ever.
+- **NULL passes through.** SQL's default `MATCH SIMPLE` says any NULL in
+  the FK columns skips the check. `assignee_id IS NULL` (unassigned) is
+  therefore always fine — a plain "assignee ∈ members" check written in
+  application code would have to remember to do this by hand.
+- **The follow-on rule is honest.** Removing a member from a project while
+  they still have tasks assigned fails (RESTRICT is default). Arguably the
+  right rule — the app can unassign first — and we take the trade. This
+  will hit us for real in phase 3 when the "remove member" route lands;
+  we'll decide then whether to graduate to `ON DELETE SET NULL (assignee_id)`
+  or keep RESTRICT.
+
+We deliberately do *not* keep a redundant `assignee_id → users.id` FK
+alongside the composite. `project_members` already references `users`, so
+the composite implies referential integrity to `users` too. Two overlapping
+constraints would take longer to reason about than one.
+
+The `test_assigning_task_to_non_member_is_rejected` test in
+`tests/test_invariants.py` grep-asserts the FK's *name* in the `IntegrityError`.
+That is deliberately overspecified — it means a future migration that
+renames the constraint has to acknowledge the change here.
+
+## What went wrong
+
+### passlib crashed on import against bcrypt 5.0
+
+- **Symptom:** `uv sync` succeeded, but the first `CryptContext(schemes=["bcrypt"])`
+  raised `ValueError: password cannot be longer than 72 bytes, truncate
+  manually if necessary`. It happens during passlib's *bcrypt backend
+  load probe* — before any of our code hashes a real password.
+- **Root cause:** passlib 1.7.4 is unmaintained. It calls `verify()` with
+  a >72-byte string on startup to detect an old bcrypt "wrap bug".
+  bcrypt 4.1+ warns about a missing `__about__` attribute; bcrypt 5.0
+  now raises outright when handed a >72-byte password. Passlib's backend
+  load can't handle the raise and blows up.
+- **Fix:** pin `bcrypt<4.1` in `pyproject.toml` alongside `passlib`. The
+  pin is annotated in-line, and PLAN.md §2 still says "bcrypt via passlib"
+  — that stays true. A later phase can migrate off passlib entirely
+  (pwdlib, or the `bcrypt` package directly) if we want; for phase 1 the
+  pin is the smaller change.
+- **What the docs didn't say:** neither passlib nor bcrypt's changelog
+  mentions each other by name. The failure surfaces as a ValueError from
+  bcrypt, but the cause is passlib's probe. Search terms that eventually
+  worked: `passlib "password cannot be longer than 72 bytes"`.
+
+### Alembic emitted `CREATE TYPE` twice for the same enum
+
+- **Symptom:** `alembic upgrade head` failed on the first run with
+  `psycopg.errors.DuplicateObject: type "member_role" already exists`.
+  The offline SQL dump made it obvious — a `CREATE TYPE member_role AS
+  ENUM (...)` appeared twice in the same transaction, once from our
+  explicit `member_role.create(bind)` and once from `op.create_table(
+  "project_members", ...)`.
+- **Root cause:** we defined the enum with `sa.Enum(..., name="member_role",
+  create_type=False)` expecting `op.create_table` to skip its implicit
+  `CREATE TYPE`. In current SQLAlchemy + Alembic, the generic `sa.Enum`
+  does *not* honour `create_type=False` when the type is referenced from
+  multiple tables — the first-referenced table emits the CREATE, and the
+  second one does too.
+- **Fix:** use `sqlalchemy.dialects.postgresql.ENUM(..., create_type=False)`
+  instead of `sa.Enum(...)`. The dialect-specific variant honours the
+  flag as intended.
+- **What the docs didn't say:** the SQLAlchemy `Enum` docs describe
+  `create_type` as if generic and dialect-specific behave the same. They
+  don't, and Alembic migrations that reuse an enum across tables are the
+  canonical place this bites. Worth its own line in a blog post: "in
+  Alembic, prefer `postgresql.ENUM` over `sa.Enum` whenever you're
+  reusing an enum across tables."
+
+### Nothing else
+
+The composite FK, the CHECK constraints, and the seed all worked first
+try. The two failures above are the two worth writing up — the rest of
+this phase is honest surprises about how easy this was.
+
+## What surprised us
+
+**Pytest picks up `pyproject.toml` as its config even without a `[tool.pytest.ini_options]`
+block.** The test session banner says `configfile: pyproject.toml`. That
+suggests pyproject can also serve as the pytest config in phase 2 when
+we start pinning `testpaths` / `asyncio_mode` — no extra `pytest.ini`.
+
+**Deterministic UUIDs make screenshots feel real.** `alice@example.com`
+resolves to `2eb2…` on every developer's machine. A blog post can put
+that UUID in a query and any reader gets the same row back.
+
+## For the post
+
+The "Designing the data" post writes itself as a walk through
+`0001_initial.py`: enums, then five `CREATE TABLE`s, stopping to explain
+the composite FK on `tasks`. The two invariants tests — one for the
+composite FK, one for the CHECK constraint — belong in the post as
+"here is how you *know* the rule holds, without needing the app code."
+
+The seed post-script is the honest engineering note: **deterministic
+UUIDs plus wipe-then-insert are the right shape for a small demo seed,
+and neither pattern shows up in most tutorials.**
