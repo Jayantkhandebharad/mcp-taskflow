@@ -32,3 +32,12 @@ dist/
 # Screenshots and exports generated while writing the blog posts.
 /tmp/
 /scratch/
+
+# ── Claude Code local tooling ────────────────────────────────────────────────
+# Local runtime state (e.g. scheduled_tasks.lock) stays out of git. The /learn
+# skill and its progress log ARE committed on purpose — they sync across machines
+# via GitHub. Ignore everything in .claude, then re-include just the learn skill.
+.claude/*
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/learn/
