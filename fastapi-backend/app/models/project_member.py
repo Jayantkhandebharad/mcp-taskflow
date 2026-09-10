@@ -14,7 +14,7 @@ from datetime import datetime
 
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
 from app.models.enums import MemberRole, member_role_enum
@@ -42,6 +42,11 @@ class ProjectMember(Base):
     added_at: Mapped[datetime] = mapped_column(
         sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()
     )
+
+    # The member as a User, for "list members" — a membership row is never
+    # shown without the person's email and name, so one JOIN beats N follow-up
+    # SELECTs. Read-side convenience only; no schema change (phase 3).
+    user: Mapped["User"] = relationship(lazy="joined")  # noqa: F821
 
     def __repr__(self) -> str:
         return (

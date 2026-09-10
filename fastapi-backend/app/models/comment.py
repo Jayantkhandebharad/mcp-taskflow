@@ -45,5 +45,9 @@ class Comment(Base):
 
     task: Mapped["Task"] = relationship(back_populates="comments")  # noqa: F821
 
+    # Who wrote it, as a User. Same reasoning as ProjectMember.user: a comment
+    # is always displayed with its author, so join rather than lazy-load.
+    author: Mapped["User"] = relationship(lazy="joined")  # noqa: F821
+
     def __repr__(self) -> str:
         return f"Comment(id={self.id!s}, task_id={self.task_id!s})"

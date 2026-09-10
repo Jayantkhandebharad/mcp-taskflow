@@ -111,6 +111,45 @@ class Task(Base):
     )
 
     # ── Relationships ────────────────────────────────────────────────────────
+    # A relationship is a Python attribute the ORM fills in by following a
+    # foreign key. None of these change the schema — they only tell the ORM
+    # how to *read* rows that already point at each other. (Phase 3 added
+    # them; no migration was needed.)
+
+    # A task is never shown without its project's key ("WEB-14" needs "WEB"),
+    # so load the project in the same query. `lazy="joined"` means one SQL
+    # JOIN instead of one extra SELECT per task; `innerjoin=True` because
+    # project_id is NOT NULL — an INNER JOIN can never drop a row here and
+    # is cheaper than the LEFT OUTER JOIN the ORM would otherwise emit.
+    project: Mapped["Project"] = relationship(  # noqa: F821
+        lazy="joined", innerjoin=True
+    )
+
+    # The assignee, as a User. Two things to know:
+    #
+    # 1. `assignee_id` has no FK to `users` — the only constraint on it is the
+    #    composite FK into project_members (see __table_args__). The ORM can't
+    #    infer a join from that, so `primaryjoin` spells the join out and
+    #    `foreign_keys` says "treat assignee_id as the pointer".
+    # 2. `viewonly=True`: this attribute is for *reading*. Writes go through
+    #    `assignee_id`, so the composite FK is always what the database
+    #    checks. The cost — the first draft of phase 3 hit it — is that after
+    #    you change `assignee_id` the ORM does NOT re-read this attribute on
+    #    its own (the session keeps loaded objects after commit; see
+    #    expire_on_commit=False in db.py). A route that changes the assignee
+    #    must `db.refresh(task)` before returning it, or it answers with the
+    #    old person.
+    #
+    # `lazy="selectin"` loads assignees for a whole list of tasks in one
+    # extra SELECT ... WHERE id IN (...), rather than one per task.
+    assignee: Mapped["User | None"] = relationship(  # noqa: F821
+        "User",
+        primaryjoin="Task.assignee_id == User.id",
+        foreign_keys="Task.assignee_id",
+        viewonly=True,
+        lazy="selectin",
+    )
+
     # cascade="all, delete-orphan" + passive_deletes=True: the DB does the
     # cascade (see the FK on Comment.task_id below), the ORM stays out of the
     # way and doesn't emit N extra DELETEs.
@@ -119,6 +158,20 @@ class Task(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+
+    # ── Derived attributes ───────────────────────────────────────────────────
+    # These are plain properties, not columns. Pydantic's `from_attributes`
+    # reads them like any other attribute, so the API can answer with
+    # "WEB-14" without a database column that would have to be kept in sync
+    # with `project.key`.
+    @property
+    def ref(self) -> str:
+        """The human (and language-model) identifier: ``"WEB-14"``."""
+        return f"{self.project.key}-{self.number}"
+
+    @property
+    def project_key(self) -> str:
+        return self.project.key
 
     __table_args__ = (
         # Per-project ticket number is unique — this is what "WEB-14" rests on.
