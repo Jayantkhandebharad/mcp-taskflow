@@ -165,12 +165,22 @@ def test_me_with_garbage_token_is_401(client: TestClient) -> None:
 
 
 def test_me_with_tampered_signature_is_401(client: TestClient) -> None:
-    """Flip the last character of the signature. The claims are untouched,
-    so a decoder that skipped verification would happily accept it."""
+    """Flip one character of the signature. The claims are untouched, so a
+    decoder that skipped verification would happily accept it.
+
+    Why the *first* character and not the last: an HS256 signature is 32
+    bytes, which base64url spells in 43 characters — 258 bits of text for
+    256 bits of data. The final character's low two bits are padding that
+    the decoder throws away, so flipping it to a neighbour (``B`` → ``A``)
+    can produce a *different string for the same signature*, and the
+    "tampered" token verifies. Phase 2 shipped that version and it failed
+    about one run in sixteen (docs/briefs/phase-3.md). Every bit of the
+    first character is real.
+    """
     _register(client)
     token = _login(client).json()["access_token"]
     head, payload, sig = token.split(".")
-    bad_sig = sig[:-1] + ("A" if sig[-1] != "A" else "B")
+    bad_sig = ("A" if sig[0] != "A" else "B") + sig[1:]
     r = client.get("/auth/me", headers=_bearer(f"{head}.{payload}.{bad_sig}"))
     assert r.status_code == 401
 

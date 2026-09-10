@@ -1,7 +1,10 @@
 # Phase 2 — Auth: register, login, JWT, `current_user`
 
-**Commits (oldest → newest):** _to be filled in when this phase is committed;
-the proposed split is at the bottom of this brief._
+**Commits (oldest → newest):** `8bbd4e6` — phase 2 landed as a *single*
+commit, not the six-way split proposed at the bottom of this brief. The
+split is still the right shape for the post to walk through; the SHA is the
+one to pin to. (Recorded during phase 3, which is exactly the archaeology
+`docs/briefs/README.md` warns about — the line was blank for a phase.)
 
 The blog post for this phase ("Auth, understood", PLAN.md §11) should pin
 `app/security.py` and `app/deps.py` to the commit where they land — those two

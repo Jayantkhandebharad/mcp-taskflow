@@ -91,6 +91,14 @@ dev = [
     "httpx2>=2.12,<3",
 ]
 
+# Where pytest looks for tests. Without this, `uv run pytest` walks the whole
+# folder — including `.venv/`, where third-party packages ship their own
+# `test_*.py` files — and either collects strangers' tests or trips on their
+# imports. `uv run pytest` must still be run *from* fastapi-backend/, because
+# tests/conftest.py opens `alembic.ini` by relative path.
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
 # Where our code actually is. Without this, `uv sync` doesn't know what to
 # install as an editable package.
 [tool.hatch.build.targets.wheel]
