@@ -16,11 +16,19 @@ Three fixtures:
   it, one test's rows leak into the next test's assertions.
 - ``client`` (function-scoped) — a FastAPI ``TestClient`` on top of ``db``,
   for tests that go through HTTP (phase 2 onwards).
+- ``seeded`` (function-scoped) — runs the demo seed on the truncated tables,
+  so a test can talk about WEB, API, Alice, Bob and Carol by name (phase 3
+  onwards). The seed is the dataset the blog posts show; testing against it
+  means the tests and the screenshots agree.
+- ``token_for`` (function-scoped) — a real ``POST /auth/login`` for a seeded
+  user, cached for the rest of the run. See the fixture for why the cache
+  survives the TRUNCATE between tests.
 """
 
 from __future__ import annotations
 
-from collections.abc import Generator
+from collections.abc import Callable, Generator
+import uuid
 
 import pytest
 from alembic import command
@@ -31,6 +39,23 @@ from sqlalchemy.orm import Session
 
 from app.db import SessionLocal, engine as app_engine
 from app.main import app
+from scripts import seed
+
+# The seed's three people. Every password is "password" (scripts/seed.py).
+ALICE = "alice@example.com"  # admin of WEB and API
+BOB = "bob@example.com"  # member of WEB only
+CAROL = "carol@example.com"  # member of API only
+SEED_PASSWORD = "password"
+
+
+def bearer(token: str) -> dict[str, str]:
+    """The header every authenticated request carries."""
+    return {"Authorization": f"Bearer {token}"}
+
+
+def uid(email: str) -> uuid.UUID:
+    """The seeded user's id, without a query — seed ids are uuid5 of the email."""
+    return seed._id("user", email)
 
 
 @pytest.fixture(scope="session")
@@ -96,3 +121,41 @@ def client(db: Session) -> Generator[TestClient, None, None]:
     """
     with TestClient(app) as c:
         yield c
+
+
+@pytest.fixture
+def seeded(db: Session) -> None:
+    """Load the demo dataset into the (truncated) tables.
+
+    Cheap after the first call: the seed hashes its one demo password once
+    per process and caches it, so re-seeding is ~30 plain INSERTs.
+    """
+    seed.main()
+
+
+# Tokens are cached for the whole pytest run, across the TRUNCATE that
+# separates tests. That works — and is worth understanding — because a JWT
+# is a signed statement "this is user <id>", not a server-side session. The
+# seed gives Alice the same uuid5 id every time, so a token minted in test 1
+# still names the Alice that test 40 just re-seeded. `current_user` looks the
+# id up fresh on every request; nothing about the token is stored server-side.
+_TOKENS: dict[str, str] = {}
+
+
+@pytest.fixture
+def token_for(client: TestClient, seeded: None) -> Callable[[str], str]:
+    """Return ``token_for(email)`` — a bearer token for a seeded user.
+
+    The first call for each email is a real ``POST /auth/login`` (the way
+    the frontend and the MCP server get theirs); later calls reuse it. Three
+    logins per run, ~0.2 s each of bcrypt, instead of three per test.
+    """
+
+    def _get(email: str, password: str = SEED_PASSWORD) -> str:
+        if email not in _TOKENS:
+            r = client.post("/auth/login", json={"email": email, "password": password})
+            assert r.status_code == 200, r.text
+            _TOKENS[email] = r.json()["access_token"]
+        return _TOKENS[email]
+
+    return _get

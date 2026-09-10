@@ -49,3 +49,16 @@ class UserOut(BaseModel):
     full_name: str
     is_active: bool
     created_at: datetime
+
+
+class UserRef(BaseModel):
+    """A user as seen *from another object* — a task's assignee, a comment's
+    author, a project's member. The three fields anyone needs to say "who"
+    and nothing else. ``UserOut`` is the fuller shape ``/auth/*`` returns.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    email: str
+    full_name: str
