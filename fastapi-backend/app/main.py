@@ -17,7 +17,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 
 from app.config import get_settings
-from app.routers import auth, projects, tasks
+from app.routers import auth, comments, me, projects, tasks
 
 settings = get_settings()
 
@@ -49,6 +49,8 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(projects.router)
 app.include_router(tasks.router)
+app.include_router(comments.router)
+app.include_router(me.router)
 
 
 @app.exception_handler(IntegrityError)
