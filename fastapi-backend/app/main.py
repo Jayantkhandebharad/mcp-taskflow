@@ -11,11 +11,13 @@ then it runs on your machine against the Postgres that Compose publishes.)
 
 from __future__ import annotations
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
 
 from app.config import get_settings
-from app.routers import auth, projects
+from app.routers import auth, projects, tasks
 
 settings = get_settings()
 
@@ -46,6 +48,31 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(projects.router)
+app.include_router(tasks.router)
+
+
+@app.exception_handler(IntegrityError)
+def integrity_error_is_a_conflict(_: Request, exc: IntegrityError) -> JSONResponse:
+    """Turn a database constraint violation into a 409, not a 500.
+
+    Every rule the database enforces (unique project key, unique task
+    number, assignee-must-be-member) is *also* checked in the handler that
+    could break it, with a message that says what to do. So in normal use
+    this never runs. It exists for the race those checks can't see: two
+    requests that both pass "is the key taken?" and then both INSERT. The
+    loser lands here, and gets a conflict with the constraint's name — a
+    client can retry; a 500 would tell it nothing.
+
+    No HTTP test reaches this on purpose: making two requests collide
+    inside TestClient would need two real connections racing, and the
+    argument for correctness is the constraint itself, not a test.
+    """
+    diag = getattr(exc.orig, "diag", None)  # psycopg attaches the details here
+    name = getattr(diag, "constraint_name", None) or "a database constraint"
+    return JSONResponse(
+        status_code=409,
+        content={"detail": f"The request conflicts with {name}. Re-read and try again."},
+    )
 
 
 @app.get("/health", tags=["ops"])
