@@ -84,6 +84,31 @@ docker compose ps
 docker compose exec db psql -U taskflow -d taskflow -c '\dt'
 ```
 
+The backend runs on your machine for now (it moves into Compose in phase 12).
+Build the schema, load the demo data, and start the API:
+
+```bash
+cd fastapi-backend
+uv sync                          # one-time: creates .venv/ from uv.lock
+uv run alembic upgrade head      # create the tables
+uv run python -m scripts.seed    # 3 users / 2 projects / 15 tasks, rerunnable
+uv run uvicorn app.main:app --reload --port 8000
+```
+
+Then log in as a demo user and ask the API who you are:
+
+```bash
+TOKEN=$(curl -s -X POST localhost:8000/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"alice@example.com","password":"password"}' | jq -r .access_token)
+
+curl -s localhost:8000/auth/me -H "Authorization: Bearer $TOKEN"
+```
+
+Every demo account's password is `password`. The interactive API page is at
+http://localhost:8000/docs, and `uv run pytest` runs the tests against the same
+Postgres.
+
 ---
 
 ## Bring your own model
@@ -137,8 +162,8 @@ folder's job can't be said in one sentence, it's doing too much.
 Built in phases. Each one ends with something that runs.
 
 - [x] **0** — Skeleton: repo, layout, `.env.example`, Postgres in Compose
-- [ ] **1** — Schema, migrations, seed data
-- [ ] **2** — Auth: register, login, JWT
+- [x] **1** — Schema, migrations, seed data
+- [x] **2** — Auth: register, login, JWT
 - [ ] **3** — Backend API: projects, members, tasks, comments
 - [ ] **4** — Frontend
 - [ ] **5** — First MCP server (stdio) 🚩

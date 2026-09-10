@@ -47,7 +47,6 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, date, datetime, timedelta
 
-from passlib.context import CryptContext
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
@@ -62,6 +61,7 @@ from app.models import (
     TaskStatus,
     User,
 )
+from app.security import hash_password
 
 # ── Deterministic-UUID setup ─────────────────────────────────────────────────
 # A fixed UUID5 namespace so uuid5(NAMESPACE, "alice@example.com") is
@@ -79,16 +79,17 @@ def _id(kind: str, *parts: str) -> uuid.UUID:
     return uuid.uuid5(NAMESPACE, ":".join([kind, *parts]))
 
 
-# passlib is intentionally reused across every seeded user — bcrypt is
-# expensive (that's the point), and we only need one hash per distinct
-# password.
-_pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Hashing goes through app.security so the seed and /auth/login share one
+# CryptContext — if they ever drifted (different scheme, different rounds),
+# "password" would stop logging in and nothing would say why. bcrypt is
+# expensive on purpose (that's the point), and every demo user has the same
+# password, so we hash it once and reuse the result.
 _HASH_CACHE: dict[str, str] = {}
 
 
 def _hash(pw: str) -> str:
     if pw not in _HASH_CACHE:
-        _HASH_CACHE[pw] = _pwd.hash(pw)
+        _HASH_CACHE[pw] = hash_password(pw)
     return _HASH_CACHE[pw]
 
 

@@ -34,7 +34,15 @@ tests/
 
 ## Status
 
-Phase 1 builds the schema, migrations and seed. Phase 2 adds auth. Phase 3 adds
-the rest of the API. Nothing here yet.
+- **Phase 1 (done)** — schema, migrations, seed. `app/models`, `alembic/`,
+  `scripts/seed.py`, `tests/test_invariants.py`.
+- **Phase 2 (done)** — auth. `app/security.py`, `app/deps.py` (`current_user`
+  only), `app/schemas/auth.py`, `app/routers/auth.py`, `app/main.py`,
+  `tests/test_auth.py`.
+- **Phase 3 (next)** — the rest of §7: projects, members, tasks, comments, and
+  the `require_member` / `require_admin` dependencies.
+
+Run it: `uv run uvicorn app.main:app --reload --port 8000`. Test it:
+`uv run pytest`. Both need the Compose Postgres up.
 
 See `PLAN.md` §5 (data model), §6 (auth) and §7 (API surface).

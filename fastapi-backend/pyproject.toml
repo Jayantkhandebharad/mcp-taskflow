@@ -34,7 +34,10 @@ dependencies = [
 
     # Pydantic v2 for validation. pydantic-settings is the v2 way to read
     # config from environment variables — used in app/config.py.
-    "pydantic>=2.7,<3",
+    # `[email]` pulls in `email-validator`, which `EmailStr` needs at import
+    # time — without it the schemas module fails to load, not just to
+    # validate. Phase 2's register/login bodies use EmailStr.
+    "pydantic[email]>=2.7,<3",
     "pydantic-settings>=2.3,<3",
 
     # Password hashing. bcrypt is the algorithm; passlib is the wrapper that
@@ -50,6 +53,24 @@ dependencies = [
     # migrate off passlib (pwdlib / bcrypt directly) if we want.
     "passlib>=1.7.4,<2",
     "bcrypt>=4.0,<4.1",
+
+    # The web framework (phase 2 onwards). FastAPI turns type-hinted functions
+    # into routes, validates bodies with Pydantic, and runs `Depends(...)`
+    # functions before the handler — that last part is how `current_user`
+    # and (in phase 3) `require_member` / `require_admin` plug in.
+    "fastapi>=0.115,<1",
+
+    # The ASGI server that actually listens on a port and hands requests to
+    # FastAPI. `[standard]` pulls in uvloop and httptools for speed, plus
+    # `watchfiles` so `--reload` works during development.
+    "uvicorn[standard]>=0.30,<1",
+
+    # JSON Web Tokens. PyJWT is the small, boring choice: `jwt.encode` and
+    # `jwt.decode`, nothing else. The MCP server will use the same library to
+    # verify the same tokens (PLAN.md §6 step 6), so the two services agree
+    # by construction. Not python-jose: it wraps several crypto backends and
+    # has had unpatched CVEs; PyJWT is one dependency with one job.
+    "pyjwt>=2.8,<3",
 ]
 
 [dependency-groups]
@@ -57,6 +78,17 @@ dependencies = [
 # they don't ship into a production image.
 dev = [
     "pytest>=8.0,<9",
+
+    # FastAPI's `TestClient` is built on httpx. It drives the app in-process,
+    # over real HTTP semantics (headers, status codes, JSON bodies), which is
+    # what "test like the real client" means for the auth tests.
+    #
+    # Why `httpx2` and not `httpx`: httpx 1.x and 2.x ship under different
+    # PyPI names so they can be installed side by side. Starlette 1.6 prefers
+    # `httpx2` and warns (StarletteDeprecationWarning) if it only finds
+    # `httpx`. Neither the FastAPI nor the Starlette testing docs mention
+    # this yet — see docs/briefs/phase-2.md.
+    "httpx2>=2.12,<3",
 ]
 
 # Where our code actually is. Without this, `uv sync` doesn't know what to

@@ -809,6 +809,8 @@ process:
 - [x] Auth designed end to end (§6)
 - [x] Tool surface designed (§8)
 - [x] LLM layer is provider-agnostic, one coupling point (§9.1)
-- [ ] Phase 0 — repo skeleton
-- [ ] Phase 1 — schema + migrations + seed
+- [x] Phase 0 — repo skeleton
+- [x] Phase 1 — schema + migrations + seed
+- [x] Phase 2 — auth: register, login, JWT, `current_user`
+- [ ] Phase 3 — backend API
 - [ ] ...

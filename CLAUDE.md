@@ -22,10 +22,13 @@ a fresh session.
   the work happens (symptom → root cause → fix → what the docs didn't tell us).
   Each brief records the commit SHA(s) its blog post pins to (PLAN.md §13), so that
   SHA line is load-bearing, not bookkeeping.
-- **Current state:** phase 0 (skeleton) is done — only PostgreSQL runs. The four
-  service folders (`fastapi-backend`, `mcp-server`, `chat-client`, `frontend`) each
-  hold a README stating their one job and no code yet. [`README.md`](README.md)
-  §Status tracks the phase checklist; keep it and PLAN.md §14 in sync as phases land.
+- **Current state:** phases 0–2 are done. PostgreSQL runs in Compose; the backend
+  runs on the host via `uv` with the five tables, migrations, a seed, and
+  `/auth/register`, `/auth/login`, `/auth/me` behind a `current_user` dependency.
+  Phase 3 (the rest of the API, plus `require_member` / `require_admin`) is next.
+  `mcp-server`, `chat-client`, `frontend` still hold only a README each.
+  [`README.md`](README.md) §Status tracks the phase checklist; keep it and PLAN.md
+  §14 in sync as phases land.
 
 ## Commands
 
@@ -39,6 +42,17 @@ docker compose up db          # just the database
 docker compose ps             # what's running
 docker compose exec db psql -U taskflow -d taskflow -c '\dt'   # list tables
 docker compose down           # stop; add -v to wipe the db volume for a clean slate
+```
+
+The backend runs on the host until phase 12 containerises it. From `fastapi-backend/`:
+
+```bash
+uv sync                                          # install from uv.lock into .venv/
+uv run alembic upgrade head                      # build the schema
+uv run python -m scripts.seed                    # demo data; wipe-and-reinsert, rerunnable
+uv run pytest                                    # all tests, against the Compose Postgres
+uv run pytest tests/test_auth.py::test_register_login_me_round_trip
+uv run uvicorn app.main:app --reload --port 8000 # the API; /docs for the OpenAPI page
 ```
 
 The two rules under *"Two rules that are checked"* below have **no CI yet** —

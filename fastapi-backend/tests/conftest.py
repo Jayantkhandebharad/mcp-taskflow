@@ -6,7 +6,7 @@ tiny risk of stepping on developer data. The dataset in that database is
 whatever the seed script produced, and every test starts by wiping it and
 building the fixture rows it actually needs.
 
-Two fixtures:
+Three fixtures:
 
 - ``engine`` (session-scoped) — one SQLAlchemy engine for the whole test run,
   with the schema built via Alembic before anything else. Building the schema
@@ -14,6 +14,8 @@ Two fixtures:
 - ``db`` (function-scoped) — a fresh session per test, and a TRUNCATE of every
   table between tests. This is the "isolated between tests" property; without
   it, one test's rows leak into the next test's assertions.
+- ``client`` (function-scoped) — a FastAPI ``TestClient`` on top of ``db``,
+  for tests that go through HTTP (phase 2 onwards).
 """
 
 from __future__ import annotations
@@ -23,10 +25,12 @@ from collections.abc import Generator
 import pytest
 from alembic import command
 from alembic.config import Config
+from fastapi.testclient import TestClient
 from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal, engine as app_engine
+from app.main import app
 
 
 @pytest.fixture(scope="session")
@@ -76,3 +80,19 @@ def db(engine: Engine) -> Generator[Session, None, None]:
         yield session
     finally:
         session.close()
+
+
+@pytest.fixture
+def client(db: Session) -> Generator[TestClient, None, None]:
+    """An HTTP client for the FastAPI app, in-process.
+
+    Depends on ``db`` so every test that touches the API starts from
+    truncated tables too. The app opens its *own* sessions via ``get_db`` —
+    same engine, same database — so rows a test creates through ``db`` must
+    be ``commit()``-ed before the app can see them.
+
+    ``TestClient`` speaks real HTTP: headers, status codes, JSON bodies. It's
+    the closest thing to "test like the real client" without a network.
+    """
+    with TestClient(app) as c:
+        yield c

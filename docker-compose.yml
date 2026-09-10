@@ -41,7 +41,7 @@ services:
       start_period: 10s
 
   # Coming in later phases:
-  #   fastapi-backend  (phase 1)   the API and the only thing that touches db
+  #   fastapi-backend  (phase 12)  the API and the only thing that touches db
   #   mcp-server       (phase 6)   MCP tools over Streamable HTTP
   #   chat-client      (phase 9)   the LangGraph agent
   #   frontend         (phase 4)   the React app
