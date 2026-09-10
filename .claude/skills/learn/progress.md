@@ -24,8 +24,8 @@ unprompted).
 |---|---|---|
 | M0 — The system on one page | partly built / mostly design | in progress |
 | M1 — The data layer | **built (code on disk)** | in progress |
-| M2 — Auth, end to end | design (Phase 2 unbuilt) | not started |
-| M3 — Backend API + RBAC | design (Phase 3 unbuilt) | not started |
+| M2 — Auth, end to end | **built (Phase 2, `8bbd4e6`)** | not started |
+| M3 — Backend API + RBAC | **built (Phase 3, `f7a8762`..`6c6533a`)** | not started |
 | M4 — The MCP server | design (Phases 5–8 unbuilt) | not started |
 | M5 — The chat client / agent | design (Phase 9 unbuilt) | not started |
 | M6 — The frontend | design (Phase 4 unbuilt) | not started |

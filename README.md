@@ -164,7 +164,7 @@ Built in phases. Each one ends with something that runs.
 - [x] **0** — Skeleton: repo, layout, `.env.example`, Postgres in Compose
 - [x] **1** — Schema, migrations, seed data
 - [x] **2** — Auth: register, login, JWT
-- [ ] **3** — Backend API: projects, members, tasks, comments
+- [x] **3** — Backend API: projects, members, tasks, comments
 - [ ] **4** — Frontend
 - [ ] **5** — First MCP server (stdio) 🚩
 - [ ] **6** — MCP over HTTP, with auth passthrough

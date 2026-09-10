@@ -22,10 +22,11 @@ a fresh session.
   the work happens (symptom → root cause → fix → what the docs didn't tell us).
   Each brief records the commit SHA(s) its blog post pins to (PLAN.md §13), so that
   SHA line is load-bearing, not bookkeeping.
-- **Current state:** phases 0–2 are done. PostgreSQL runs in Compose; the backend
-  runs on the host via `uv` with the five tables, migrations, a seed, and
-  `/auth/register`, `/auth/login`, `/auth/me` behind a `current_user` dependency.
-  Phase 3 (the rest of the API, plus `require_member` / `require_admin`) is next.
+- **Current state:** phases 0–3 are done. PostgreSQL runs in Compose; the backend
+  runs on the host via `uv` with the five tables, migrations, a seed, and every
+  route in PLAN.md §7 behind the `current_user` → `get_project` →
+  `require_member` → `require_admin` chain in `app/deps.py`. 87 tests, all
+  through HTTP against the seed. Phase 4 (the frontend) is next.
   `mcp-server`, `chat-client`, `frontend` still hold only a README each.
   [`README.md`](README.md) §Status tracks the phase checklist; keep it and PLAN.md
   §14 in sync as phases land.

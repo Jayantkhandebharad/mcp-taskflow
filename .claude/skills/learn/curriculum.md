@@ -99,13 +99,14 @@ architect lenses stop being slogans.
 
 ---
 
-## M2 — Auth, end to end  [DESIGN until Phase 2]
+## M2 — Auth, end to end  [BUILT]
 
 **Goal:** trace a token from login to a protected route, and know where
 authorization state lives (and why not in the token).
 
-**Anchors:** `PLAN.md` §6, ADR 0002. Future code: `app/security.py`, `app/deps.py`,
-`app/routers/auth.py`.
+**Anchors:** `PLAN.md` §6, ADR 0002, `docs/briefs/phase-2.md`. Code:
+`fastapi-backend/app/security.py`, `app/deps.py` (`current_user`),
+`app/routers/auth.py`, `tests/test_auth.py`.
 
 **Concepts:** password hashing (bcrypt via passlib); JWT HS256 signed with
 `JWT_SECRET`; **what is and isn't in the token — roles are NOT** (they live in
@@ -122,12 +123,15 @@ MCP server; "verify then forward — two checks on purpose," backend is the auth
 
 ---
 
-## M3 — The backend API + RBAC  [DESIGN until Phase 3]
+## M3 — The backend API + RBAC  [BUILT]
 
 **Goal:** see how a small route surface serves both the human UI and the AI tools,
 with the rules written exactly once.
 
-**Anchors:** `PLAN.md` §7 (routes), §8 (gating). Future: `app/routers/*.py`.
+**Anchors:** `PLAN.md` §7 (routes), §8 (gating), `docs/briefs/phase-3.md`. Code:
+`fastapi-backend/app/deps.py` (the chain — read its module docstring first),
+`app/routers/{projects,tasks,comments,me}.py`,
+`tests/test_tasks.py::test_delete_task_as_member_is_403`.
 
 **Concepts:** every route maps to something the UI *and* a tool need; rules live
 once in the backend; **`GET /me/capabilities`** exists specifically so the MCP gate

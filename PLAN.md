@@ -812,5 +812,6 @@ process:
 - [x] Phase 0 — repo skeleton
 - [x] Phase 1 — schema + migrations + seed
 - [x] Phase 2 — auth: register, login, JWT, `current_user`
-- [ ] Phase 3 — backend API
+- [x] Phase 3 — backend API: every route in §7, `require_member` / `require_admin`
+- [ ] Phase 4 — frontend
 - [ ] ...

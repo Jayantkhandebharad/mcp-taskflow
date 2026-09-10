@@ -36,11 +36,15 @@ tests/
 
 - **Phase 1 (done)** — schema, migrations, seed. `app/models`, `alembic/`,
   `scripts/seed.py`, `tests/test_invariants.py`.
-- **Phase 2 (done)** — auth. `app/security.py`, `app/deps.py` (`current_user`
-  only), `app/schemas/auth.py`, `app/routers/auth.py`, `app/main.py`,
+- **Phase 2 (done)** — auth. `app/security.py`, `app/deps.py` (`current_user`),
+  `app/schemas/auth.py`, `app/routers/auth.py`, `app/main.py`,
   `tests/test_auth.py`.
-- **Phase 3 (next)** — the rest of §7: projects, members, tasks, comments, and
-  the `require_member` / `require_admin` dependencies.
+- **Phase 3 (done)** — the rest of §7. `app/deps.py` (`get_project`,
+  `require_member`, `require_admin`, `get_task`), `app/routers/{projects,tasks,
+  comments,me}.py`, `app/schemas/{projects,tasks,comments,me}.py`, four
+  relationships on the models, `tests/test_{projects,tasks,comments,me}.py`.
+- **Next for this folder:** phase 12 puts it in a container. Phases 4–11 build
+  the other three services against this API without changing it.
 
 Run it: `uv run uvicorn app.main:app --reload --port 8000`. Test it:
 `uv run pytest`. Both need the Compose Postgres up.
