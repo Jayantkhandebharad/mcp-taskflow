@@ -109,6 +109,18 @@ Every demo account's password is `password`. The interactive API page is at
 http://localhost:8000/docs, and `uv run pytest` runs the tests against the same
 Postgres.
 
+The web app also runs on your machine for now. In a second terminal:
+
+```bash
+cd frontend
+npm install                      # one-time, from package-lock.json
+npm run dev                      # http://localhost:5173
+```
+
+Log in as `alice@example.com` / `password` and you can do everything the API
+can: projects, a board, tasks, comments, members. `npm run walkthrough` drives
+all of it in a headless Chrome and checks what a person would check.
+
 ---
 
 ## Bring your own model
@@ -165,7 +177,7 @@ Built in phases. Each one ends with something that runs.
 - [x] **1** — Schema, migrations, seed data
 - [x] **2** — Auth: register, login, JWT
 - [x] **3** — Backend API: projects, members, tasks, comments
-- [ ] **4** — Frontend
+- [x] **4** — Frontend
 - [ ] **5** — First MCP server (stdio) 🚩
 - [ ] **6** — MCP over HTTP, with auth passthrough
 - [ ] **7** — The full toolset

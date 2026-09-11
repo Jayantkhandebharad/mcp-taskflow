@@ -28,7 +28,7 @@ unprompted).
 | M3 — Backend API + RBAC | **built (Phase 3, `f7a8762`..`6c6533a`)** | not started |
 | M4 — The MCP server | design (Phases 5–8 unbuilt) | not started |
 | M5 — The chat client / agent | design (Phase 9 unbuilt) | not started |
-| M6 — The frontend | design (Phase 4 unbuilt) | not started |
+| M6 — The frontend | **built (Phase 4, `4ce4dff`)** | not started |
 | M7 — Production-systems thinking | cross-cutting | not started |
 
 ## Architect lenses — mastery tracker

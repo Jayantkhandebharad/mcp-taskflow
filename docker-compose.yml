@@ -44,7 +44,7 @@ services:
   #   fastapi-backend  (phase 12)  the API and the only thing that touches db
   #   mcp-server       (phase 6)   MCP tools over Streamable HTTP
   #   chat-client      (phase 9)   the LangGraph agent
-  #   frontend         (phase 4)   the React app
+  #   frontend         (phase 12)  the React app (runs on the host with `npm run dev` until then)
 
 volumes:
   db_data:

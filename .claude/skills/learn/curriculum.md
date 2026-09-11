@@ -193,12 +193,14 @@ code, same model, different token, different tools).
 
 ---
 
-## M6 — The frontend  [DESIGN until Phase 4]
+## M6 — The frontend  [BUILT — Phase 4]
 
 **Goal:** see the plain web app that proves the backend is a real product, not an
 MCP fixture — and that knows nothing about MCP.
 
-**Anchors:** `PLAN.md` §10, `frontend/README.md`. Future: `frontend/src/`.
+**Anchors:** `PLAN.md` §10, `frontend/README.md`, `frontend/src/api.ts`,
+`frontend/src/pages/TaskPage.tsx`, `frontend/src/pages/MembersPage.tsx`,
+`docs/briefs/phase-4.md`.
 
 **Concepts:** a normal React app, no MCP anywhere; token in memory + `localStorage`
 (and the honest tradeoff); one `api.ts` attaching the token; the five screens.

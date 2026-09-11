@@ -22,12 +22,14 @@ a fresh session.
   the work happens (symptom → root cause → fix → what the docs didn't tell us).
   Each brief records the commit SHA(s) its blog post pins to (PLAN.md §13), so that
   SHA line is load-bearing, not bookkeeping.
-- **Current state:** phases 0–3 are done. PostgreSQL runs in Compose; the backend
+- **Current state:** phases 0–4 are done. PostgreSQL runs in Compose; the backend
   runs on the host via `uv` with the five tables, migrations, a seed, and every
   route in PLAN.md §7 behind the `current_user` → `get_project` →
   `require_member` → `require_admin` chain in `app/deps.py`. 87 tests, all
-  through HTTP against the seed. Phase 4 (the frontend) is next.
-  `mcp-server`, `chat-client`, `frontend` still hold only a README each.
+  through HTTP against the seed. The frontend runs on the host via `npm run dev`:
+  five screens, one `api.ts`, React Router, Tailwind v4, and a scripted Chrome
+  walkthrough (`npm run walkthrough`). Phase 5 (the first MCP server, stdio) is
+  next. `mcp-server` and `chat-client` still hold only a README each.
   [`README.md`](README.md) §Status tracks the phase checklist; keep it and PLAN.md
   §14 in sync as phases land.
 
@@ -56,6 +58,15 @@ uv run pytest tests/test_auth.py::test_register_login_me_round_trip
 uv run uvicorn app.main:app --reload --port 8000 # the API; /docs for the OpenAPI page
 ```
 
+The frontend also runs on the host until phase 12. From `frontend/`:
+
+```bash
+npm install                    # from package-lock.json
+npm run dev                    # http://localhost:5173, against the API on 8000
+npm run typecheck              # tsc; `npm run build` runs this first, then bundles
+npm run walkthrough            # every screen in headless Chrome; needs dev server + seeded API
+```
+
 The two rules under *"Two rules that are checked"* below have **no CI yet** —
 verify them by hand until the CI phase lands:
 
@@ -73,7 +84,7 @@ Conventions for the tooling that lands in later phases (§2 of PLAN.md locks the
   `uv run pytest tests/test_x.py::test_name`.
 - **Migrations** are Alembic in `fastapi-backend`: `alembic upgrade head`, then
   `python scripts/seed.py` (rerunnable) for deterministic demo data.
-- **Frontend** is Vite + TypeScript: `npm run dev` / `npm run build` (phase 4+).
+- **Frontend** is Vite + TypeScript: `npm run dev` / `npm run build` / `npm run walkthrough`.
 - **The MCP server has a second entry point** — `python -m app.server --stdio` —
   for pointing Claude Desktop / Claude Code at it locally (phase 5+).
 

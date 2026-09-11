@@ -813,5 +813,5 @@ process:
 - [x] Phase 1 — schema + migrations + seed
 - [x] Phase 2 — auth: register, login, JWT, `current_user`
 - [x] Phase 3 — backend API: every route in §7, `require_member` / `require_admin`
-- [ ] Phase 4 — frontend
+- [x] Phase 4 — frontend: the five screens in §10, `api.ts`, scripted walkthrough
 - [ ] ...
