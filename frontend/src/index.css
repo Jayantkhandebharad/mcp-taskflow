@@ -1,0 +1,4 @@
+/* Tailwind v4: this one line pulls in the whole framework. The Vite plugin
+   (vite.config.ts) scans our .tsx files for class names and emits only the
+   CSS those classes need. There is no tailwind.config.js in v4. */
+@import "tailwindcss";

@@ -1,0 +1,32 @@
+{
+  // One tsconfig, not the three-file split `npm create vite` generates. The
+  // split exists so `vite.config.ts` (runs in Node) and `src/` (runs in the
+  // browser) can have different settings; ours are the same, so one file is
+  // easier to read.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    // "bundler" = resolve imports the way Vite does (no file extensions
+    // needed, package.json "exports" respected).
+    "moduleResolution": "bundler",
+    // The modern JSX transform: no `import React` needed in every file.
+    "jsx": "react-jsx",
+
+    // We never run `tsc` to produce JavaScript — Vite does that (using
+    // esbuild, which strips types without checking them). `tsc` exists in
+    // this project purely as a type checker, hence `noEmit`.
+    "noEmit": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "skipLibCheck": true,
+
+    // Teaches TypeScript about `import.meta.env`.
+    "types": ["vite/client"]
+  },
+  "include": ["src", "vite.config.ts"]
+}
