@@ -1,0 +1,51 @@
+# Package metadata + dependencies for the mcp-server service.
+#
+# Same tooling as fastapi-backend (PLAN.md §2): `uv`, one lockfile, tests under
+# `tests/`. To install and run:
+#
+#     cd mcp-server
+#     uv sync                                  # runtime + dev deps into .venv/
+#     uv run python -m app.server --stdio      # the server, over stdin/stdout
+#     uv run pytest                            # needs the Compose Postgres up
+#
+# Note what is NOT here: no ORM, no database driver of any kind. This service
+# calls the backend's HTTP API and nothing else (ADR 0001). CLAUDE.md greps
+# this folder for driver names, so this comment doesn't spell them either.
+
+[project]
+name = "taskflow-mcp-server"
+version = "0.1.0"
+description = "TaskFlow MCP server — the backend's REST API as tools an AI can call"
+requires-python = ">=3.12"
+
+dependencies = [
+    # The official MCP Python SDK. Version 2 renamed the high-level server
+    # class from `FastMCP` to `MCPServer` (import from `mcp.server.mcpserver`)
+    # — most tutorials, and PLAN.md, still say FastMCP. Same thing, new name.
+    # Pinned below 3 so a future rename doesn't break a reader's clone.
+    "mcp>=2.2,<3",
+
+    # The HTTP client we use to call fastapi-backend. `httpx2` is the 2.x line
+    # of httpx, published under its own name; the MCP SDK already depends on
+    # it, and we list it too because we import it directly (backend.py).
+    "httpx2>=2.12,<3",
+
+    # Config from environment variables, the same way the backend does it.
+    "pydantic-settings>=2.3,<3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0,<9",
+]
+
+# Keep pytest out of .venv/ (third-party packages ship their own test files).
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
