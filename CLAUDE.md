@@ -28,8 +28,13 @@ a fresh session.
   `require_member` → `require_admin` chain in `app/deps.py`. 87 tests, all
   through HTTP against the seed. The frontend runs on the host via `npm run dev`:
   five screens, one `api.ts`, React Router, Tailwind v4, and a scripted Chrome
-  walkthrough (`npm run walkthrough`). Phase 5 (the first MCP server, stdio) is
-  next. `mcp-server` and `chat-client` still hold only a README each.
+  walkthrough (`npm run walkthrough`). The MCP server (phase 5) runs on the host
+  over stdio: `MCPServer` from the `mcp` 2.x SDK (the class 1.x called
+  `FastMCP`), `whoami` and `list_projects`, the `current_token` contextvar, a
+  `ToolError`-per-HTTP-failure backend client, eight tests that spawn it as a
+  subprocess against a real backend, and a script that registers it with
+  Claude Desktop. Phase 6 (Streamable HTTP + bearer passthrough) is next.
+  `chat-client` still holds only a README.
   [`README.md`](README.md) §Status tracks the phase checklist; keep it and PLAN.md
   §14 in sync as phases land.
 
@@ -65,6 +70,16 @@ npm install                    # from package-lock.json
 npm run dev                    # http://localhost:5173, against the API on 8000
 npm run typecheck              # tsc; `npm run build` runs this first, then bundles
 npm run walkthrough            # every screen in headless Chrome; needs dev server + seeded API
+```
+
+The MCP server runs on the host too, stdio only until phase 6. From `mcp-server/`:
+
+```bash
+uv sync                                                              # install from uv.lock
+uv run pytest                                                        # starts its own backend on a free port; needs the Compose Postgres
+uv run python -m scripts.claude_desktop alice@example.com password   # register with Claude Desktop (backs up the config); then restart it
+TASKFLOW_EMAIL=alice@example.com TASKFLOW_PASSWORD=password \
+  uv run python -m app.server --stdio                                # the server itself; waits for a client on stdin
 ```
 
 The two rules under *"Two rules that are checked"* below have **no CI yet** —

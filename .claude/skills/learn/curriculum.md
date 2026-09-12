@@ -146,13 +146,15 @@ feature, not a security feature** — the backend still 403s a gated call.
 
 ---
 
-## M4 — The MCP server  [DESIGN until Phases 5–8]
+## M4 — The MCP server  [PARTLY BUILT — Phase 5 (stdio, 2 tools); 6–8 still design]
 
 **Goal:** understand MCP as a thin, safe translation layer over an existing API —
 tools, resources, prompts — and how it borrows the user's identity.
 
-**Anchors:** `PLAN.md` §8, ADR 0001, `mcp-server/README.md`. Future: `app/server.py`,
-`app/auth.py`, `app/backend.py`, `app/tools/`, `app/gating.py`.
+**Anchors:** `PLAN.md` §8, ADR 0001, `mcp-server/README.md`, `docs/briefs/phase-5.md`.
+Built (Phase 5): `app/server.py`, `app/auth.py`, `app/backend.py`, `app/tools/{me,projects}.py`,
+`tests/test_stdio.py`. Future: HTTP transport (6), the other ten tools (7), `app/gating.py`,
+`app/resources.py`, `app/prompts.py` (8).
 
 **Concepts:** what MCP is (tool calling, standardized); **tools vs. resources vs.
 prompts**; tool design *for a model* — human identifiers (`WEB-14`, an email, not a

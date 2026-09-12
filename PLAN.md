@@ -73,7 +73,7 @@ instead.
 | Database | **PostgreSQL 16** | Real DB, real migrations, real constraints |
 | Backend | **FastAPI + SQLAlchemy 2.0 + Alembic + Pydantic v2** | Python end-to-end; type hints do the documenting |
 | Auth | **Own JWT (HS256)** issued by the backend | Small enough to read in one sitting. Keycloak/OIDC becomes a *later* post, not a day-1 wall |
-| MCP server | **Python + official `mcp` SDK (FastMCP)** | The reference implementation; what the docs describe |
+| MCP server | **Python + official `mcp` SDK (FastMCP — renamed `MCPServer` in SDK 2.x)** | The reference implementation; what the docs describe |
 | Chat client | **FastAPI + LangGraph + `langchain-mcp-adapters`** | The agent loop is visible, not hidden in a framework |
 | LLM | **Provider-agnostic** — `init_chat_model()`, model named by one env var | Claude / GPT / Gemini / local Ollama, swapped without touching code. See §9.1 |
 | Frontend | **React + Vite + TypeScript + Tailwind** | Matches the portfolio; no state library needed at this size |
@@ -814,4 +814,5 @@ process:
 - [x] Phase 2 — auth: register, login, JWT, `current_user`
 - [x] Phase 3 — backend API: every route in §7, `require_member` / `require_admin`
 - [x] Phase 4 — frontend: the five screens in §10, `api.ts`, scripted walkthrough
+- [x] Phase 5 — first MCP server: `MCPServer` over stdio, `whoami` + `list_projects`, tests through a real stdio client, wired to Claude Desktop by script
 - [ ] ...

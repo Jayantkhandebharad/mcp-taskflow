@@ -121,6 +121,21 @@ Log in as `alice@example.com` / `password` and you can do everything the API
 can: projects, a board, tasks, comments, members. `npm run walkthrough` drives
 all of it in a headless Chrome and checks what a person would check.
 
+The MCP server runs on your machine as well, and today speaks stdio only — the
+transport desktop AI clients use to launch a local server. Register it with
+Claude Desktop, restart the app, and ask "who am I logged in as?":
+
+```bash
+cd mcp-server
+uv sync
+uv run python -m scripts.claude_desktop alice@example.com password
+uv run pytest                    # drives the server over stdio, against a real backend
+```
+
+The server has no credentials of its own: it logs in as the person you named
+and every tool call carries that person's token to the same API the web app
+uses. Log in as Bob instead and the assistant sees one project, not two.
+
 ---
 
 ## Bring your own model
@@ -178,7 +193,7 @@ Built in phases. Each one ends with something that runs.
 - [x] **2** — Auth: register, login, JWT
 - [x] **3** — Backend API: projects, members, tasks, comments
 - [x] **4** — Frontend
-- [ ] **5** — First MCP server (stdio) 🚩
+- [x] **5** — First MCP server (stdio) 🚩
 - [ ] **6** — MCP over HTTP, with auth passthrough
 - [ ] **7** — The full toolset
 - [ ] **8** — RBAC gating, resources, prompts 🚩
