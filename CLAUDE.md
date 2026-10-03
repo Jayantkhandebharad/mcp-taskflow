@@ -28,13 +28,17 @@ a fresh session.
   `require_member` → `require_admin` chain in `app/deps.py`. 87 tests, all
   through HTTP against the seed. The frontend runs on the host via `npm run dev`:
   five screens, one `api.ts`, React Router, Tailwind v4, and a scripted Chrome
-  walkthrough (`npm run walkthrough`). The MCP server (phase 5) runs on the host
-  over stdio: `MCPServer` from the `mcp` 2.x SDK (the class 1.x called
-  `FastMCP`), `whoami` and `list_projects`, the `current_token` contextvar, a
-  `ToolError`-per-HTTP-failure backend client, eight tests that spawn it as a
-  subprocess against a real backend, and a script that registers it with
-  Claude Desktop. Phase 6 (Streamable HTTP + bearer passthrough) is next.
-  `chat-client` still holds only a README.
+  walkthrough (`npm run walkthrough`). The MCP server (phases 5–6) runs on the
+  host over two transports: `MCPServer` from the `mcp` 2.x SDK (the class 1.x
+  called `FastMCP`), `whoami` and `list_projects`, the `current_token`
+  contextvar, a `ToolError`-per-HTTP-failure backend client. Streamable HTTP
+  on `:9000/mcp` is now the default — `BearerTokenMiddleware` verifies each
+  request's JWT with the shared `JWT_SECRET` and sets `current_token` per
+  request, no login at startup; `--stdio` still logs in once as
+  `TASKFLOW_EMAIL`/`PASSWORD` for desktop clients. Sixteen tests spawn the
+  server as a subprocess, over both transports, against a real backend; a
+  script registers the stdio form with Claude Desktop. Phase 7 (the other ten
+  tools) is next. `chat-client` still holds only a README.
   [`README.md`](README.md) §Status tracks the phase checklist; keep it and PLAN.md
   §14 in sync as phases land.
 
@@ -72,14 +76,15 @@ npm run typecheck              # tsc; `npm run build` runs this first, then bund
 npm run walkthrough            # every screen in headless Chrome; needs dev server + seeded API
 ```
 
-The MCP server runs on the host too, stdio only until phase 6. From `mcp-server/`:
+The MCP server runs on the host too, over Streamable HTTP (the default) or stdio. From `mcp-server/`:
 
 ```bash
 uv sync                                                              # install from uv.lock
 uv run pytest                                                        # starts its own backend on a free port; needs the Compose Postgres
-uv run python -m scripts.claude_desktop alice@example.com password   # register with Claude Desktop (backs up the config); then restart it
+uv run python -m app.server                                          # Streamable HTTP on :9000/mcp; bearer token per request, no login
+uv run python -m scripts.claude_desktop alice@example.com password   # register the stdio form with Claude Desktop (backs up the config); then restart it
 TASKFLOW_EMAIL=alice@example.com TASKFLOW_PASSWORD=password \
-  uv run python -m app.server --stdio                                # the server itself; waits for a client on stdin
+  uv run python -m app.server --stdio                                # stdio; logs in once, waits for a client on stdin
 ```
 
 The two rules under *"Two rules that are checked"* below have **no CI yet** —

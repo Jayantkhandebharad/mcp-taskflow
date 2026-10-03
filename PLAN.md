@@ -815,4 +815,5 @@ process:
 - [x] Phase 3 — backend API: every route in §7, `require_member` / `require_admin`
 - [x] Phase 4 — frontend: the five screens in §10, `api.ts`, scripted walkthrough
 - [x] Phase 5 — first MCP server: `MCPServer` over stdio, `whoami` + `list_projects`, tests through a real stdio client, wired to Claude Desktop by script
+- [x] Phase 6 — Streamable HTTP on `:9000/mcp`, now the default transport; `BearerTokenMiddleware` verifies the caller's JWT with the shared secret and sets `current_token` per request; a curl'd `tools/call` with a real JWT works
 - [ ] ...

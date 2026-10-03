@@ -121,20 +121,25 @@ Log in as `alice@example.com` / `password` and you can do everything the API
 can: projects, a board, tasks, comments, members. `npm run walkthrough` drives
 all of it in a headless Chrome and checks what a person would check.
 
-The MCP server runs on your machine as well, and today speaks stdio only — the
-transport desktop AI clients use to launch a local server. Register it with
-Claude Desktop, restart the app, and ask "who am I logged in as?":
+The MCP server runs on your machine as well, over two transports: Streamable
+HTTP on `:9000/mcp` (the default — what a curl or the future chat client
+uses) and stdio, the transport desktop AI clients use to launch a local
+server. Register the stdio form with Claude Desktop, restart the app, and ask
+"who am I logged in as?":
 
 ```bash
 cd mcp-server
 uv sync
 uv run python -m scripts.claude_desktop alice@example.com password
-uv run pytest                    # drives the server over stdio, against a real backend
+uv run python -m app.server          # HTTP on :9000/mcp — bearer token per request
+uv run pytest                        # drives the server over stdio and HTTP, against a real backend
 ```
 
-The server has no credentials of its own: it logs in as the person you named
-and every tool call carries that person's token to the same API the web app
-uses. Log in as Bob instead and the assistant sees one project, not two.
+The server has no credentials of its own. Over stdio it logs in as the person
+you named at startup; over HTTP it logs nobody in and instead verifies the
+`Authorization: Bearer <jwt>` each request already carries. Either way, every
+tool call rides that person's token to the same API the web app uses. Log in
+as Bob instead and the assistant sees one project, not two.
 
 ---
 
@@ -194,7 +199,7 @@ Built in phases. Each one ends with something that runs.
 - [x] **3** — Backend API: projects, members, tasks, comments
 - [x] **4** — Frontend
 - [x] **5** — First MCP server (stdio) 🚩
-- [ ] **6** — MCP over HTTP, with auth passthrough
+- [x] **6** — MCP over HTTP, with auth passthrough
 - [ ] **7** — The full toolset
 - [ ] **8** — RBAC gating, resources, prompts 🚩
 - [ ] **9** — Chat client: the LangGraph agent 🚩
