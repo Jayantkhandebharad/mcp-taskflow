@@ -1,14 +1,20 @@
 """Settings for the mcp-server service.
 
-Environment variables only, like every service in this repo. Three of them
-matter in phase 5:
+Environment variables only, like every service in this repo.
 
 - ``BACKEND_URL`` — where fastapi-backend is. ``http://localhost:8000`` while
   the backend runs on your machine; ``http://fastapi-backend:8000`` once both
   run inside Compose (phase 12) and reach each other by service name.
 - ``TASKFLOW_EMAIL`` / ``TASKFLOW_PASSWORD`` — **stdio mode only.** Who the
   server acts as when a desktop client launches it. See ``auth.py`` for why
-  stdio needs these and HTTP mode (phase 6) will not.
+  stdio needs these and HTTP mode does not.
+- ``JWT_SECRET`` / ``JWT_ALGORITHM`` — **HTTP mode only.** The same values
+  fastapi-backend signs tokens with (``fastapi-backend/app/config.py``). HTTP
+  mode verifies a caller's bearer token with these before forwarding, so the
+  two services must always agree — that's why ``.env.example`` says so loudly
+  under one shared ``JWT_SECRET``, not two.
+- ``MCP_PORT`` — which port Streamable HTTP listens on. ``9000`` everywhere,
+  per PLAN.md §12's port table.
 
 Why the ``.env`` path is absolute
 =================================
@@ -48,6 +54,14 @@ class Settings(BaseSettings):
     # No defaults on purpose: the server must not silently act as anyone.
     taskflow_email: str | None = Field(default=None, alias="TASKFLOW_EMAIL")
     taskflow_password: str | None = Field(default=None, alias="TASKFLOW_PASSWORD")
+
+    # Same names, same values as fastapi-backend/app/config.py — see the
+    # module docstring. Defaults match the backend's dev-only placeholder so
+    # the two agree out of the box; change both together in a real .env.
+    jwt_secret: str = Field(default="dev_secret_change_me_openssl_rand_hex_32", alias="JWT_SECRET")
+    jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
+
+    mcp_port: int = Field(default=9000, alias="MCP_PORT")
 
 
 @lru_cache

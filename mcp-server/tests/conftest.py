@@ -1,17 +1,22 @@
 """Fixtures that make the MCP server's tests behave like a real client.
 
-Nothing is mocked. A test here spawns the server exactly the way Claude
+Nothing is mocked. A stdio test spawns the server exactly the way Claude
 Desktop does — as a subprocess, ``python -m app.server --stdio``, with a
 near-empty environment — and talks to it with the MCP SDK's own ``Client``
-over stdin/stdout. Behind the server is the *real* fastapi-backend, started
-once per test run on a free port against the Compose Postgres, with the demo
-seed loaded. (CLAUDE.md: "test like the real client, not an ideal one.")
+over stdin/stdout. An HTTP test spawns it the way the chat client will —
+``python -m app.server``, one process for the whole session — and talks to
+it over a real socket with a real JWT from a real ``/auth/login``. Behind
+either transport is the *real* fastapi-backend, started once per test run on
+a free port against the Compose Postgres, with the demo seed loaded.
+(CLAUDE.md: "test like the real client, not an ideal one.")
 
-What that costs: each test that talks to the server pays a process start
-(about a second: importing the SDK, then a real ``/auth/login`` with
-bcrypt). A dozen tests is fine; a thousand would want the in-process
-``Client(server)`` the SDK also offers. We'll switch when it hurts, not
-before — the subprocess is the thing that will really call us.
+What that costs: each stdio test pays a process start (about a second:
+importing the SDK, then a real ``/auth/login`` with bcrypt) because stdio
+mode logs in once at startup. HTTP tests share one process and pay only the
+login's cost, since the token rides on each call instead. A dozen tests is
+fine either way; a thousand would want the in-process ``Client(server)`` the
+SDK also offers. We'll switch when it hurts, not before — the subprocess is
+the thing that will really call us.
 
 Requires ``uv`` on PATH and ``docker compose up db`` running, like the
 backend's own tests.
@@ -32,6 +37,7 @@ import httpx2
 import pytest
 from mcp import Client
 from mcp.client.stdio import StdioServerParameters
+from mcp.client.streamable_http import streamable_http_client
 from mcp.types import CallToolResult, Tool
 
 MCP_DIR = Path(__file__).resolve().parents[1]
@@ -149,3 +155,99 @@ def _run(coro_fn):
     import anyio
 
     return anyio.run(coro_fn)
+
+
+def token_for(backend_url: str, email: str, password: str = SEED_PASSWORD) -> str:
+    """A real JWT from the real backend — what a browser or the chat client
+    would hold. HTTP-mode tests send this as ``Authorization: Bearer <token>``
+    instead of the login-at-startup that stdio mode uses.
+    """
+    response = httpx2.post(f"{backend_url}/auth/login", json={"email": email, "password": password}, timeout=10.0)
+    response.raise_for_status()
+    return response.json()["access_token"]
+
+
+def _wait_for_http_server(url: str, proc: subprocess.Popen) -> None:
+    """The server is up once it answers *anything*. A bare request with no
+    token gets a 401 from ``BearerTokenMiddleware`` before the MCP app ever
+    sees it, which is proof enough that the whole ASGI stack is serving.
+    """
+    deadline = time.monotonic() + 30
+    while True:
+        try:
+            if httpx2.post(url, timeout=1.0).status_code == 401:
+                return
+        except httpx2.TransportError:
+            pass
+        if proc.poll() is not None or time.monotonic() > deadline:
+            stderr = proc.stderr.read() if proc.stderr else ""
+            raise RuntimeError(f"mcp-server did not come up on {url}:\n{stderr}")
+        time.sleep(0.2)
+
+
+@pytest.fixture(scope="session")
+def mcp_http_url(backend_url: str) -> Iterator[str]:
+    """Start the real server in HTTP mode on a free port; yield its ``/mcp`` URL.
+
+    One process for the whole session. Unlike stdio, HTTP mode logs nobody in
+    at startup (PLAN.md §6) — there is no per-user state to isolate, so every
+    test in ``test_http.py`` shares this one server and picks its user with
+    whatever token it sends.
+    """
+    port = _free_port()
+    url = f"http://127.0.0.1:{port}/mcp"
+    env = {k: os.environ[k] for k in ("PATH", "HOME") if k in os.environ}
+    env["BACKEND_URL"] = backend_url
+    env["MCP_PORT"] = str(port)
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "app.server"],
+        cwd=MCP_DIR,
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        _wait_for_http_server(url, proc)
+        yield url
+    finally:
+        proc.terminate()
+        proc.wait(timeout=10)
+
+
+@pytest.fixture
+def as_http_user(mcp_http_url: str, backend_url: str):
+    """``as_http_user(email)`` → a handle on the shared HTTP server, calling
+    as that user's real token. The HTTP counterpart of ``as_user``: instead of
+    a fresh process per user, one server and a different ``Authorization``
+    header per call — the thing PLAN.md §6 step 5 actually describes.
+    """
+
+    class Handle:
+        def __init__(self, email: str) -> None:
+            self.token = token_for(backend_url, email)
+
+        def _client(self) -> Client:
+            transport = streamable_http_client(
+                mcp_http_url,
+                http_client=httpx2.AsyncClient(headers={"Authorization": f"Bearer {self.token}"}),
+            )
+            return Client(transport)
+
+        def tools(self) -> list[Tool]:
+            async def go() -> list[Tool]:
+                async with self._client() as client:
+                    return (await client.list_tools()).tools
+
+            return _run(go)
+
+        def call(self, name: str, **arguments: Any) -> CallToolResult:
+            async def go() -> CallToolResult:
+                async with self._client() as client:
+                    result = await client.call_tool(name, arguments)
+                    assert isinstance(result, CallToolResult)
+                    return result
+
+            return _run(go)
+
+    return Handle

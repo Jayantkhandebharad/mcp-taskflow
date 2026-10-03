@@ -83,11 +83,3 @@ def test_startup_failures_are_sentences_on_stderr(backend_url, env_override, exp
     assert proc.returncode == 1
     assert expected in proc.stderr
     assert proc.stdout == ""
-
-
-def test_without_the_flag_it_says_what_is_missing(backend_url):
-    proc = subprocess.run(
-        [sys.executable, "-m", "app.server"], cwd=MCP_DIR, env=server_env(backend_url, ALICE), capture_output=True, text=True, timeout=60
-    )
-    assert proc.returncode == 2
-    assert "phase 6" in proc.stderr and "--stdio" in proc.stderr

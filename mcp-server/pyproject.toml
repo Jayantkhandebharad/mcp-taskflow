@@ -32,6 +32,17 @@ dependencies = [
 
     # Config from environment variables, the same way the backend does it.
     "pydantic-settings>=2.3,<3",
+
+    # Verifies bearer tokens over HTTP (app/auth.py) with the same secret
+    # fastapi-backend signs them with. Same package, same version range as
+    # fastapi-backend/pyproject.toml.
+    "pyjwt>=2.8,<3",
+
+    # Runs the Streamable HTTP app (app/server.py). The MCP SDK already
+    # depends on it to offer "streamable-http" as a transport; we list it too
+    # because we call `uvicorn.run` directly, to attach BearerTokenMiddleware
+    # before serving.
+    "uvicorn>=0.31,<1",
 ]
 
 [dependency-groups]

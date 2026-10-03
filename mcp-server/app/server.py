@@ -1,12 +1,13 @@
 """The MCP server: one ``MCPServer`` instance, and how to start it.
 
-Run it over stdio — the transport desktop clients use to launch a local
-server as a subprocess and talk JSON-RPC over its stdin and stdout::
+Two ways to run it:
 
-    uv run python -m app.server --stdio
+    uv run python -m app.server                # Streamable HTTP on :9000/mcp (the default)
+    uv run python -m app.server --stdio         # stdin/stdout, for Claude Desktop / Claude Code
 
-The Streamable HTTP entry point on :9000 arrives in phase 6; until then the
-flag is required so the command line stays the same when it does.
+HTTP is the default per PLAN.md §8 — it's what the chat client and Docker
+use. ``--stdio`` exists for local desktop clients that launch the server as a
+subprocess and have no way to send an HTTP request.
 
 Stdio rule #1: **nothing but protocol goes to stdout.** A stray ``print``
 corrupts the stream and the client disconnects with a parse error. Logs go
@@ -20,11 +21,12 @@ import argparse
 import sys
 
 import anyio
+import uvicorn
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
 from app import backend
-from app.auth import current_token
+from app.auth import BearerTokenMiddleware, current_token
 from app.config import get_settings
 from app.tools import register_all
 
@@ -46,9 +48,14 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="python -m app.server", description=__doc__.split("\n\n")[0])
     parser.add_argument("--stdio", action="store_true", help="serve over stdin/stdout (for Claude Desktop, Claude Code, the tests)")
     args = parser.parse_args(argv)
-    if not args.stdio:
-        parser.exit(2, "Streamable HTTP on :9000 arrives in phase 6. For now, run with --stdio.\n")
 
+    if args.stdio:
+        _run_stdio()
+    else:
+        _run_http()
+
+
+def _run_stdio() -> None:
     settings = get_settings()
     if not settings.taskflow_email or not settings.taskflow_password:
         sys.exit(
@@ -69,6 +76,15 @@ def main(argv: list[str] | None = None) -> None:
     # server creates inherits it (a new task copies the current context).
     current_token.set(token)
     server.run("stdio")
+
+
+def _run_http() -> None:
+    # No login here: nobody to log in as yet. Each request brings its own
+    # token, verified per request by BearerTokenMiddleware (app/auth.py).
+    settings = get_settings()
+    http_app = server.streamable_http_app()
+    http_app.add_middleware(BearerTokenMiddleware)
+    uvicorn.run(http_app, host="127.0.0.1", port=settings.mcp_port, log_level="info")
 
 
 if __name__ == "__main__":

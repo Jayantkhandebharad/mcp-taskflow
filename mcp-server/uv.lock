@@ -684,6 +684,8 @@ dependencies = [
     { name = "httpx2" },
     { name = "mcp" },
     { name = "pydantic-settings" },
+    { name = "pyjwt" },
+    { name = "uvicorn" },
 ]
 
 [package.dev-dependencies]
@@ -696,6 +698,8 @@ requires-dist = [
     { name = "httpx2", specifier = ">=2.12,<3" },
     { name = "mcp", specifier = ">=2.2,<3" },
     { name = "pydantic-settings", specifier = ">=2.3,<3" },
+    { name = "pyjwt", specifier = ">=2.8,<3" },
+    { name = "uvicorn", specifier = ">=0.31,<1" },
 ]
 
 [package.metadata.requires-dev]
